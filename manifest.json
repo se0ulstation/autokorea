@@ -1,0 +1,45 @@
+{
+  "manifest_version": 3,
+  "name": "AutoKorea — 국가 자동 선택",
+  "version": "1.0.1",
+  "description": "해외 사이트 회원가입·결제 폼의 국가 선택을 자동으로 한국(Republic of Korea)으로 채워줍니다.",
+  "icons": {
+    "16": "icons/16.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  },
+  "permissions": ["storage"],
+  "host_permissions": ["<all_urls>"],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": [
+        "src/content/detector.js",
+        "src/content/toast.js",
+        "src/content/handlers/native-select.js",
+        "src/content/handlers/custom-dropdown.js",
+        "src/content/handlers/phone-country.js",
+        "src/content/observer.js",
+        "src/content/index.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ],
+  "options_ui": {
+    "page": "src/options/options.html",
+    "open_in_tab": false
+  },
+  "background": {
+    "service_worker": "src/background/service-worker.js"
+  },
+  "action": {
+    "default_title": "AutoKorea",
+    "default_popup": "src/popup/popup.html",
+    "default_icon": {
+      "16": "icons/16.png",
+      "48": "icons/48.png",
+      "128": "icons/128.png"
+    }
+  }
+}

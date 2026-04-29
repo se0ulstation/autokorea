@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>AutoKorea 옵션</title>
+  <style>
+    body {
+      font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      margin: 0;
+      padding: 18px 20px;
+      width: 380px;
+      color: #111;
+      background: #fff;
+    }
+    h1 { font-size: 16px; margin: 0 0 14px; display: flex; align-items: center; gap: 8px; }
+    .row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; }
+    label { font-weight: 500; }
+    .hint { color: #666; font-size: 12px; margin: 4px 0 8px; }
+    textarea {
+      width: 100%;
+      box-sizing: border-box;
+      min-height: 120px;
+      font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      resize: vertical;
+    }
+    .actions { display: flex; gap: 8px; margin-top: 10px; align-items: center; }
+    button {
+      font: inherit;
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid #d1d5db;
+      background: #f9fafb;
+      cursor: pointer;
+    }
+    button.primary { background: #111; color: #fff; border-color: #111; }
+    .saved { color: #059669; font-size: 12px; opacity: 0; transition: opacity .2s; }
+    .saved.show { opacity: 1; }
+    hr { border: none; border-top: 1px solid #eee; margin: 14px 0; }
+    .switch {
+      position: relative;
+      width: 36px;
+      height: 20px;
+    }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; inset: 0;
+      background: #d1d5db; border-radius: 20px; cursor: pointer;
+      transition: background .15s;
+    }
+    .slider::before {
+      content: ""; position: absolute; left: 2px; top: 2px;
+      width: 16px; height: 16px; background: #fff; border-radius: 50%;
+      transition: transform .15s;
+    }
+    .switch input:checked + .slider { background: #111; }
+    .switch input:checked + .slider::before { transform: translateX(16px); }
+  </style>
+</head>
+<body>
+  <h1>🇰🇷 AutoKorea</h1>
+
+  <div class="row">
+    <label for="enabled">자동 선택 활성화</label>
+    <span class="switch">
+      <input type="checkbox" id="enabled" />
+      <span class="slider"></span>
+    </span>
+  </div>
+
+  <hr />
+
+  <label for="disabled">비활성화할 사이트</label>
+  <div class="hint">한 줄에 하나씩 도메인을 적어주세요. 서브도메인은 자동 매칭. 예: <code>example.com</code></div>
+  <textarea id="disabled" placeholder="example.com&#10;another.site"></textarea>
+
+  <div class="actions">
+    <button id="save" class="primary">저장</button>
+    <button id="reset">초기화</button>
+    <span id="saved" class="saved">저장됨</span>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>
