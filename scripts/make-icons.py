@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""Generate AutoKorea icons (16/48/128) — two-line wordmark "AUTO / KOREA"."""
+"""Generate AutoKorea icons (16/48/128) — minimal monochrome wordmark."""
 from pathlib import Path
-from PIL import Image, ImageDraw, ImageFont, ImageFilter
+from PIL import Image, ImageDraw, ImageFont
 
 OUT = Path(__file__).resolve().parent.parent / "icons"
 OUT.mkdir(exist_ok=True)
 
-RED = (205, 46, 58, 255)
-BLUE = (0, 71, 160, 255)
-BG = (255, 255, 255, 255)
-SHADOW = (0, 0, 0, 50)
+# Monochrome palette
+INK = (18, 18, 20, 255)      # near-black, slightly warm
+PAPER = (255, 255, 255, 255)
+RULE = (18, 18, 20, 255)
 
 FONT_CANDIDATES = [
     "/System/Library/Fonts/Supplemental/Arial Black.ttf",
@@ -31,8 +31,7 @@ def load_font(size_px):
     return ImageFont.load_default()
 
 
-def fit_font(text, max_width, max_height, start=200):
-    """Binary-search for the largest font size that fits text within bounds."""
+def fit_font(text, max_width, max_height, start=400):
     lo, hi = 4, start
     best = lo
     while lo <= hi:
@@ -52,50 +51,92 @@ def fit_font(text, max_width, max_height, start=200):
 def render(size: int) -> Image.Image:
     s = size * 4  # supersample
     img = Image.new("RGBA", (s, s), (0, 0, 0, 0))
-
-    # Soft shadow + rounded background card
-    pad = max(2, s // 64)
-    radius = int(s * 0.22)
-
-    shadow_layer = Image.new("RGBA", (s, s), (0, 0, 0, 0))
-    sd = ImageDraw.Draw(shadow_layer)
-    sd.rounded_rectangle((pad, pad + s // 80, s - pad, s - pad + s // 80),
-                         radius=radius, fill=SHADOW)
-    shadow_layer = shadow_layer.filter(ImageFilter.GaussianBlur(s // 80))
-    img = Image.alpha_composite(img, shadow_layer)
-
     draw = ImageDraw.Draw(img)
-    draw.rounded_rectangle((pad, pad, s - pad, s - pad), radius=radius, fill=BG)
 
-    # Layout: two stacked lines centered. KOREA defines the width budget.
-    side_pad = int(s * 0.08)
-    avail_w = s - side_pad * 2
-    avail_h = (s - side_pad * 2)
-    line_h_budget = int(avail_h * 0.42)  # each line ~42% of vertical space
+    # Squircle ink card filling almost the entire frame
+    pad = max(2, s // 80)
+    radius = int(s * 0.24)
+    draw.rounded_rectangle((pad, pad, s - pad, s - pad), radius=radius, fill=INK)
 
-    f_korea = fit_font("KOREA", avail_w, line_h_budget, start=int(s * 0.55))
-    # Match AUTO's font size to KOREA's so both lines feel like a single wordmark.
-    f_auto = f_korea
+    # Inset a thin keyline border one pixel thick (after downscale) for refinement
+    keyline_w = max(1, s // 256)
+    keyline_inset = pad + max(2, s // 32)
+    draw.rounded_rectangle(
+        (keyline_inset, keyline_inset, s - keyline_inset, s - keyline_inset),
+        radius=int(radius * 0.7), outline=(255, 255, 255, 36), width=keyline_w
+    )
 
-    def text_size(font, text):
+    # Type area: leave generous margins
+    side = int(s * 0.14)
+    avail_w = s - side * 2
+
+    # Both words sized to the same width — KOREA is longer, so it sets the scale.
+    f_korea = fit_font("KOREA", avail_w, int(s * 0.34), start=int(s * 0.45))
+    f_auto = f_korea  # same metrics → unified wordmark
+
+    def text_metrics(font, text):
         bbox = font.getbbox(text)
         return bbox[2] - bbox[0], bbox[3] - bbox[1], bbox[1]
 
-    aw, ah, a_off = text_size(f_auto, "AUTO")
-    kw, kh, k_off = text_size(f_korea, "KOREA")
+    aw, ah, a_off = text_metrics(f_auto, "AUTO")
+    kw, kh, k_off = text_metrics(f_korea, "KOREA")
 
-    gap = int(s * 0.02)
-    total_h = ah + gap + kh
-    top_y = (s - total_h) // 2
+    # Vertical layout: AUTO / thin rule / KOREA, group centered
+    rule_gap_above = int(s * 0.025)
+    rule_gap_below = int(s * 0.025)
+    rule_h = max(1, s // 96)
+    total_h = ah + rule_gap_above + rule_h + rule_gap_below + kh
+    top = (s - total_h) // 2
 
     auto_x = (s - aw) // 2
-    auto_y = top_y - a_off
+    auto_y = top - a_off
+    draw.text((auto_x, auto_y), "AUTO", font=f_auto, fill=PAPER)
+
+    # Thin divider rule between the two words, width slightly less than KOREA
+    rule_w = int(kw * 0.9)
+    rule_x0 = (s - rule_w) // 2
+    rule_y = top + ah + rule_gap_above
+    draw.rectangle((rule_x0, rule_y, rule_x0 + rule_w, rule_y + rule_h), fill=PAPER)
 
     korea_x = (s - kw) // 2
-    korea_y = top_y + ah + gap - k_off
+    korea_y = rule_y + rule_h + rule_gap_below - k_off
+    draw.text((korea_x, korea_y), "KOREA", font=f_korea, fill=PAPER)
 
-    draw.text((auto_x, auto_y), "AUTO", font=f_auto, fill=RED)
-    draw.text((korea_x, korea_y), "KOREA", font=f_korea, fill=BLUE)
+    # For the smallest icon (16px), the divider rule is illegible — drop it cleanly.
+    if size < 32:
+        # Re-render without rule for 16px clarity
+        return render_simple(size)
+
+    return img.resize((size, size), Image.LANCZOS)
+
+
+def render_simple(size: int) -> Image.Image:
+    """Stripped-down version for tiny sizes (16px) — no divider rule."""
+    s = size * 4
+    img = Image.new("RGBA", (s, s), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+
+    pad = max(2, s // 80)
+    radius = int(s * 0.24)
+    draw.rounded_rectangle((pad, pad, s - pad, s - pad), radius=radius, fill=INK)
+
+    side = int(s * 0.10)
+    avail_w = s - side * 2
+    f = fit_font("KOREA", avail_w, int(s * 0.42), start=int(s * 0.5))
+
+    def text_metrics(font, text):
+        bbox = font.getbbox(text)
+        return bbox[2] - bbox[0], bbox[3] - bbox[1], bbox[1]
+
+    aw, ah, a_off = text_metrics(f, "AUTO")
+    kw, kh, k_off = text_metrics(f, "KOREA")
+
+    gap = int(s * 0.04)
+    total_h = ah + gap + kh
+    top = (s - total_h) // 2
+
+    draw.text(((s - aw) // 2, top - a_off), "AUTO", font=f, fill=PAPER)
+    draw.text(((s - kw) // 2, top + ah + gap - k_off), "KOREA", font=f, fill=PAPER)
 
     return img.resize((size, size), Image.LANCZOS)
 
